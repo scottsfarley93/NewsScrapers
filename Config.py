@@ -4,15 +4,34 @@ class Configuration():
         self.apiSecret = apiSecret
         self.consumerSecret = consumerSecret
         self.consumerKey = consumerKey
+    def loadFromFile(self, filename):
+        f = open(filename, 'r')
+        self.apiKey = ""
+        self.apiSecret = ""
+        self.consumerKey = ""
+        self.consumerSecret = ""
+        i = 0
+        for row in f:
+            if i == 0:
+                self.apiKey = row
+            if i == 1:
+                self.apiSecret = row
+            if i == 2:
+                self.consumerSecret = row
+            if i == 3:
+                self.consumerKey = row
+            i +=1
 
-
-Twitter = Configuration(apiKey="BM3NAGuWx4iMpaYBB29hoyJeH", apiSecret="lzsHayWBop09eNwuKL7fDLTevN1X6pEqQykicmij4XcToPdWwj",
-                         consumerKey="3609701009-mDbbwgQkNbvumolwMn43cOHBfNE4mun49lEdqeJ", consumerSecret="Khjzhlfp6pkbeB5urxbWfYfQCIX3BWOKFLMjm9cpQTTZ7")
-
-
-Guardian = Configuration(apiKey="h4sjfafaf56m7p29bw9qmqyx")
-NPR = Configuration(apiKey="MDIxMDEwNjc0MDE0NDU5NzYxODQ4MTVhZg000")
-Tumblr = Configuration(apiKey="pKHOq4GdpCnJ2QdGh5jVgah7EmZ7vqYTc9k5bPgVxQpTOgblK2", apiSecret="4gqIuDfozMxW5ol4fmy7Zk9xBoFcRevoZ1gB1GIEcfQCSG94hU")
-NYT = Configuration(apiKey="389fb66286e98e35e0a6f7d8d8d9abb0:18:73270480")
+Twitter = Configuration()
+Twitter.loadFromFile("keys/twitterKeys.txt")
+Guardian = Configuration()
+Guardian.loadFromFile("keys/guardianKey.txt")
+NPR = Configuration()
+NPR.loadFromFile("keys/NPRKey.txt")
+Tumblr = Configuration()
+Tumblr.loadFromFile("keys/TumblrKeys.txt")
+NYT = Configuration()
+NYT.loadFromFile("keys/NYTKey.txt")
+print "Loaded all API Keys from Keystore"
 
 

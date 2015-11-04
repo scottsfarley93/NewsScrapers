@@ -1,0 +1,6 @@
+##Gitignore File
+##Ignore Keystore Folder
+keys/
+
+##Ignore compiled python
+.pyc

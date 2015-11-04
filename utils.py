@@ -25,6 +25,7 @@ class Output():
     def calculateTotalWords(self):
         s = 0
         for i in self.content:
+            i.calculatNumberOfWords()
             s += i.numberOfWords
         self.totalWords = s
 
