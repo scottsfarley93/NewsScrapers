@@ -75,7 +75,3 @@ def getRange(term, startDate, endDate):
     print "Total Number of Words is: ", Out.totalWords
     print "Number of Days is: ", Out.totalDays
     return Out
-
-a = getRange("Syria", (2015, 10, 22), (2015, 10, 24))
-writeOutputToFile(a, "/Users/scottsfarley/documents/nprTest.dat")
-b = importFile("/Users/scottsfarley/documents/nprTest.dat")

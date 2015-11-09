@@ -25,7 +25,7 @@ class Output():
     def calculateTotalWords(self):
         s = 0
         for i in self.content:
-            i.calculatNumberOfWords()
+            i.calculateNumberOfWords()
             s += i.numberOfWords
         self.totalWords = s
 
@@ -215,3 +215,111 @@ def importFile(filename):
     a = pickle.load(f)
     f.close()
     return a
+
+def loadCitieslist():
+    import urllib2
+    import json
+    data = urllib2.urlopen("https://raw.githubusercontent.com/mahemoff/geodata/master/cities_with_countries.txt")
+    d = json.load(data)
+    cities = []
+    countries = []
+    for i in d:
+        cities.append(i['city'].upper())
+        countries.append(i['country'])
+
+    return cities
+
+cities = loadCitieslist()
+
+def loadCountriesList():
+    import urllib2
+    import json
+    data = urllib2.urlopen("http://restcountries.eu/rest/v1/all")
+    d = json.load(data)
+    countries = []
+    for i in d:
+        countries.append(i['name'].upper())
+    return countries
+countries = loadCountriesList()
+
+###News Analysis Tools
+class TimeSeriesAnalysis():
+    def __init__(self, newsObj):
+        ##Loads a news object
+        self.raw = newsObj
+    def dailySentiment(self, normalize = False):
+        from textblob import TextBlob
+        sentiments = []
+        for day in self.raw.content:
+            ##Aggregate this day's text
+            allText = ""
+            for article in day.content:
+                articleText= article.text
+                allText += articleText
+            blob = TextBlob(allText)
+            print blob.sentiment
+            sentiments.append((day.date, blob.sentiment))
+        return sentiments
+
+    def dailyCitiesReferences(self):
+        from textblob import TextBlob
+        days = {}
+        for day in self.raw.content:
+            allText = ""
+            for article in day.content:
+                articleText = article.text
+                allText += articleText
+            blob = TextBlob(allText)
+            words = blob.words
+            cityCounts = {}
+            for word in words:
+                if word.upper() in cities:
+                   if word not in cityCounts.keys():
+                       cityCounts[word] = 1
+                   else:
+                       cityCounts[word] +=1
+            days[day.date] = cityCounts
+        return days
+
+
+
+class AggregateAnalysis():
+    def __init__(self, rawObj):
+        self.raw = rawObj
+        self.allText= ""
+        ##aggregate all text
+        for day in self.raw.content:
+            for article in day.content:
+                articleText = article.text
+                self.allText += articleText
+    def countryMentions(self):
+        from collections import Counter
+        from textblob import TextBlob
+        mentions = []
+        print "Finding country mentions..."
+        blob = TextBlob(self.allText)
+        for word in blob.words:
+            print word
+            if word.upper() in countries:
+                mentions.append(word.upper())
+        c = Counter(mentions)
+        return c
+    def cityMentions(self):
+        from collections import Counter
+        from textblob import TextBlob
+        mentions = []
+        print "Finding country mentions..."
+        blob = TextBlob(self.allText)
+        for word in blob.words:
+            print word
+            if word.upper() in cities:
+                mentions.append(word.upper())
+        c = Counter(mentions)
+        return c
+    def aggregateSentiment(self):
+        from textblob import TextBlob
+        blob = TextBlob(self.allText)
+        return blob.sentiment
+
+    def saveToDisk(self):
+        

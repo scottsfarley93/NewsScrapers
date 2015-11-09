@@ -88,9 +88,6 @@ def getRange(term, startDate, endDate):
 
 
 
-a = getRange("Syria", (2015, 10, 1), (2015, 10, 24))
-writeOutputToFile(a, "/Users/scottsfarley/documents/Syria_Guardian_20151001-20151024.dat")
-
 
 
 

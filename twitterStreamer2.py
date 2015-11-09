@@ -51,6 +51,7 @@ class tweetStreamer(StreamListener):
             name = d['user']['name'].encode("UTF_8")
             screen_name = d['user']['screen_name'].encode("UTF-8")
             lang = d['user']['lang']
+            #print d['coordinates']
             row = creation, id, name, screen_name, lang, text
             csvWriter.writerow(row)
         except:

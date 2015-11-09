@@ -14,15 +14,15 @@ def getDay(term, day):
     nextDay = getNextDate(day)
     endTime = timeFromDateString(nextDay)
     #D = Day(day)
-    apiKey = Tumblr.apiKey
+    apiKey = Tumblr.apiKey.strip()
     endpoint = "http://api.tumblr.com/v2/tagged"
     url = endpoint + "?tag=" + term
-    url += "&api_key=" + apiKey
-    url += "&filter=text"
+    url += "&api_key=" + apiKey + "&filter=text"
     runningTime = endTime
     content = []
     while runningTime >= startTime:
-        apiCall =url + "&before=" + str(runningTime) ##separate so we don't keep adding to the url
+        apiCall = url + "&before=" + str(runningTime) ##separate so we don't keep adding to the url
+        print apiCall
         response = urllib2.urlopen(apiCall)
         data = json.load(response)
         r = data['response']
@@ -74,5 +74,3 @@ def getRange(term, startDate, endDate):
     print "Total Number of Words is: ", Out.totalWords
     print "Number of Days is: ", Out.totalDays
     return Out
-
-getRange("Syria", (2015, 10, 22), (2015, 10, 23))
