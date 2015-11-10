@@ -236,7 +236,7 @@ def loadCountriesList():
     import json
     data = urllib2.urlopen("http://restcountries.eu/rest/v1/all")
     d = json.load(data)
-    countries = []
+    countries = ["STATES"] ##catch united states via this hack
     for i in d:
         countries.append(i['name'].upper())
     return countries
@@ -247,9 +247,13 @@ class TimeSeriesAnalysis():
     def __init__(self, newsObj):
         ##Loads a news object
         self.raw = newsObj
+        self.sentiments = []
+        self.cityCounts = {}
+        self.countryCounts = {}
     def dailySentiment(self, normalize = False):
+        print "Analyzing daily sentiment."
         from textblob import TextBlob
-        sentiments = []
+        sentiments = {}
         for day in self.raw.content:
             ##Aggregate this day's text
             allText = ""
@@ -257,11 +261,12 @@ class TimeSeriesAnalysis():
                 articleText= article.text
                 allText += articleText
             blob = TextBlob(allText)
-            print blob.sentiment
-            sentiments.append((day.date, blob.sentiment))
+            sentiments[day.date] = blob.sentiment
+        self.sentiments = sentiments
         return sentiments
 
     def dailyCitiesReferences(self):
+        print "Finding daily city references..."
         from textblob import TextBlob
         days = {}
         for day in self.raw.content:
@@ -274,12 +279,50 @@ class TimeSeriesAnalysis():
             cityCounts = {}
             for word in words:
                 if word.upper() in cities:
-                   if word not in cityCounts.keys():
-                       cityCounts[word] = 1
+                   print word.upper()
+                   if word.upper() not in cityCounts.keys():
+                       cityCounts[word.upper()] = 1
                    else:
-                       cityCounts[word] +=1
+                       cityCounts[word.upper()] +=1
             days[day.date] = cityCounts
+        self.cityCounts = days
         return days
+
+    def dailyCountryReferences(self):
+        print "Finding daily country references..."
+        from textblob import TextBlob
+        days = {}
+        for day in self.raw.content:
+            allText = ""
+            for article in day.content:
+                articleText = article.text
+                allText += articleText
+            blob = TextBlob(allText)
+            words = blob.words
+            countryCounts = {}
+            for word in words:
+                if word.upper() in countries:
+                   if word.upper() not in countryCounts.keys():
+                       countryCounts[word.upper()] = 1
+                   else:
+                       countryCounts[word.upper()] +=1
+            days[day.date] = countryCounts
+        self.countryCounts = days
+        return days
+
+    def writeToDisk(self, filename="default"):
+        print "Writing to disk."
+        import json
+        if filename == 'default':
+            import os
+            docsFolder = os.environ['HOME'] + "/documents"
+            filename = docsFolder + "/TimeSeries.dat"
+        output = {"CityCounts" : self.cityCounts, "Sentiments" : self.sentiments, "CountryCounts" : self.countryCounts}
+        out = json.dumps(output)
+        f = open(filename, 'w')
+        f.write(out)
+        f.close()
+
 
 
 
@@ -292,6 +335,12 @@ class AggregateAnalysis():
             for article in day.content:
                 articleText = article.text
                 self.allText += articleText
+        self.cityCounts = []
+        self.countryCounts = []
+        self.sentiment = (0,0)
+        self.keyword = self.raw.searchTerm
+        self.startDate = self.raw.startDate
+        self.endDate = self.raw.endDate
     def countryMentions(self):
         from collections import Counter
         from textblob import TextBlob
@@ -299,27 +348,186 @@ class AggregateAnalysis():
         print "Finding country mentions..."
         blob = TextBlob(self.allText)
         for word in blob.words:
-            print word
             if word.upper() in countries:
                 mentions.append(word.upper())
         c = Counter(mentions)
+        self.countryCount = c
         return c
     def cityMentions(self):
         from collections import Counter
         from textblob import TextBlob
         mentions = []
-        print "Finding country mentions..."
+        print "Finding city mentions..."
         blob = TextBlob(self.allText)
         for word in blob.words:
-            print word
             if word.upper() in cities:
                 mentions.append(word.upper())
         c = Counter(mentions)
+        self.cityCount = c
         return c
     def aggregateSentiment(self):
+        print "Analyzing sentiment"
         from textblob import TextBlob
         blob = TextBlob(self.allText)
+        self.sentiment = blob.sentiment
         return blob.sentiment
 
-    def saveToDisk(self):
-        
+    def writeToDisk(self, filename='defualt'):
+        print "Saving to disk."
+        if filename == ' default':
+            import os
+            docsFolder = os.environ['HOME'] + "/documents"
+            filename = docsFolder + "/Aggregate.dat"
+        import json
+        output = {'CityCounts' : self.cityCount, 'CountryCounts' : self.countryCount, 'Sentiments' : self.sentiment}
+        out = json.dumps(output)
+        f = open(filename, 'w')
+        f.write(out)
+        f.close()
+
+
+#####ANALYSIS UTILITIES
+
+##For timeseries
+
+def getCitySet(TSObj):
+    """Return a list of unique cities mentioned in the time series analysis object"""
+    cityCounts = TSObj['CityCounts']
+    citySet = []
+    for day in cityCounts:
+        for city in cityCounts[day]:
+            citySet.append(city)
+    return set(citySet)
+
+def getCountrySet(TSObj):
+    """Return a list of unique countries mentioned in the time series analysis"""
+    print TSObj.keys()
+    countryCounts = TSObj['CountryCounts']
+    countrySet = []
+    for day in countryCounts:
+        for country in countryCounts[day]:
+            countrySet.append(country)
+    return set(countrySet)
+
+
+
+def getDailyCityOccurrenceMatrix(tsobject):
+    """Returns a pandas dataframe of daily occurrences of mentions of cities over the period of the analysis"""
+    import pandas as pd
+    theMatrix = []
+    header = ['Date']
+    header += getCitySet(tsobject) ##unique cities within the object
+    theMatrix.append(header)
+    dates = ["Date"]
+    for day in tsobject['CityCounts']:
+        date = pd.to_datetime(day)
+        dates.append(date)
+        blankRow = [date]
+        key = day
+        dayData = tsobject['CityCounts'][day]
+        for city in header:
+            if city in dayData.keys():
+                blankRow.append(dayData[city])
+            else:
+                blankRow.append(0)
+        theMatrix.append(blankRow)
+    theMatrix = pd.DataFrame(theMatrix, index = dates)
+    theMatrix.columns = header + ["NaN"]
+    theMatrix = theMatrix.ix[1:]
+    return theMatrix
+
+def getDailyCountryOccurrenceMatrix(tsobject):
+    """Returns a pandas dataframe of daily occurrences of all of the countries mentioned over the period of the analysis"""
+    import pandas as pd
+    theMatrix = []
+    header = ['Date']
+    header += getCountrySet(tsobject) ##all countries
+    theMatrix.append(header)
+    dates = ['Date']
+    for day in tsobject['CountryCounts']:
+        date = pd.to_datetime(day)
+        dates.append(date)
+        blankRow = [date]
+        dayData = tsobject['CountryCounts'][day]
+        for country in header:
+            if country in dayData.keys(): ##if it is in the day's mentioned
+                blankRow.append(dayData[country]) ##add that number to the day's row in the dataframe
+            else:
+                blankRow.append(0) ##otherwise there were no mentions
+        theMatrix.append(blankRow)
+    theMatrix = pd.DataFrame(theMatrix, index = dates)
+     ##fix header info
+    theMatrix.columns = header+ ["NaN"]
+    theMatrix = theMatrix.ix[1:]
+    return theMatrix
+
+def getDailySentimentMatrix(tsobject):
+    import pandas as pd
+    theMatrix = []
+    header = ["Date", "Polarity", "Subjectivity"]
+    dates = []
+    for day in tsobject['Sentiments']:
+        date = pd.to_datetime(day)
+        dates.append(date)
+        blankRow = [date]
+        dayData = tsobject["Sentiments"][day]
+        polarity = dayData[0]
+        subjectivity = dayData[1]
+        blankRow.append(polarity)
+        blankRow.append(subjectivity)
+        theMatrix.append(blankRow)
+    theMatrix = pd.DataFrame(theMatrix, index = dates, columns=header)
+    return theMatrix
+
+
+##For aggregate
+
+def getAggregateCountryMentions(aggobject):
+    """Returns 1-column pandas dataframe of country mention occurrences aggregated over analysis period"""
+    import pandas as pd
+    theMatrix = []
+    header = ["Count"]
+    countries = []
+    countryCounts = aggobject['CountryCounts']
+    for country in countryCounts:
+        row = []
+        count = countryCounts[country]
+        countries.append(country)
+        row.append(count)
+        theMatrix.append(row)
+    theMatrix = pd.DataFrame(theMatrix, columns = header, index=countries)
+    return theMatrix
+
+
+def getAggregateSentiment(aggobject):
+    """Return the sentiment analysis aggregated over the whole analysis period.
+        Return as tuple (polarity, subjectivity)"""
+    print aggobject['Sentiments']
+
+
+def getAggregateCityMentions(aggobject):
+    """Returns a 1-column pandas dataframe with the city frequencies aggregated over the whole analysis period"""
+    import pandas as pd
+    theMatrix = []
+    header = ["Count"]
+    cityList = []
+    cityCounts = aggobject['CityCounts']
+    for city in cityCounts:
+        row = []
+        count = cityCounts[city]
+        cityList.append(city)
+        row.append(count)
+        theMatrix.append(row)
+    theMatrix = pd.DataFrame(theMatrix, columns=header, index=cityList)
+    return theMatrix
+
+
+
+def importAnalysisFile(filename):
+    """Brings a json analysis file into memory"""
+    import json
+    import pandas as pd
+    f = open(filename, 'r')
+    data = json.load(f)
+    return data
+
